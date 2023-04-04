@@ -6,43 +6,51 @@ import {
   FlatList,
   TouchableOpacity,
 } from 'react-native';
-import dotenv from 'dotenv';
 import RNPickerSelect from 'react-native-picker-select';
 
 import axios from 'axios';
 
-const BASE_URL = process.env.BACKEND_URL;
+const BASE_URL = 'http://localhost:3000';
 
-dotenv.config();
 interface Scene {
   scene: string;
-  summary: string;
+  description: string;
 }
 
 interface Movie {
   id: string;
   title: string;
-  scenes: Scene[];
+  description: string[];
 }
 
 const App = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<string>('');
   const [selectedScene, setSelectedScene] = useState<string>('');
+  const [scenes, setScenes] = useState<Scene[]>([]);
   const [sceneSummaries, setSceneSummaries] = useState<string>('');
 
   useEffect(() => {
     const fetchMovies = async () => {
       const response = await axios.get(`${BASE_URL}`);
-      setMovies(response.data.map((movie: any) => movie.title));
+      setMovies(response.data);
     };
     fetchMovies();
   }, []);
 
-  const handleMovieChange = (movie: string) => {
-    setSelectedMovie(movie);
-    setSelectedScene('');
+  const handleMovieChange = async (movieId: string) => {
+    setSelectedMovie(movieId);
+    console.log(movieId);
+    try {
+      const response = await fetch(`${BASE_URL}/scenes?movie=${movieId}`);
+      const scenesResponse = await response.json();
+      setScenes(scenesResponse);
+    } catch (error) {
+      console.error(error);
+    }
   };
+
+  console.log(scenes);
 
   const handleSceneSelect = (scene: string) => {
     setSelectedScene(scene);
@@ -62,7 +70,7 @@ const App = () => {
     </TouchableOpacity>
   );
 
-  return (
+  return movies.length ? (
     <View style={styles.container}>
       <RNPickerSelect
         style={{
@@ -101,18 +109,19 @@ const App = () => {
         keyExtractor={(item) => item.scene}
         style={styles.sceneList}
       />
-      {selectedScene ? (
+      {scenes.length ? (
         <View style={styles.summaryContainer}>
-          <Text style={styles.summaryTitle}>
-            Summary for Scene {selectedScene}
-          </Text>
-          <Text style={styles.summaryText}>{sceneSummaries}</Text>
-          <TouchableOpacity
+          {scenes.map((scene) => (
+            <Text style={styles.summaryTitle}>
+              Scene {scene.scene_number}: {scene.description}
+            </Text>
+          ))}
+          {/* <TouchableOpacity
             style={styles.generateButton}
             onPress={() => handleSceneSelect(selectedScene)}
           >
             <Text style={styles.buttonText}>Generate Summary</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       ) : (
         <View style={styles.placeholderContainer}>
@@ -122,6 +131,8 @@ const App = () => {
         </View>
       )}
     </View>
+  ) : (
+    <></>
   );
 };
 
